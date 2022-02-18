@@ -1,6 +1,6 @@
 import logo from './logo.svg';
 import './App.css';
-import SimpleStorageContract from "./contracts/Test.json";
+import NFT from "./contracts/scABI.json";
 import { Component } from 'react';
 import Web3 from 'web3';
 import Contract from "web3-eth-contract"; 
@@ -8,7 +8,8 @@ import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
 import MerkleTree from "merkletreejs";
 const keccak256 = require('keccak256');
 
-let tree, root;
+let tree, root, contract;
+// contract address = 0x7365872a2b26EBaefa8A0349b2b0208BE30f0275
 
 class App extends Component {
   constructor(props) {
@@ -17,11 +18,7 @@ class App extends Component {
       newAddress: '', 
       found: "Check First",
       address: null, 
-      whiteListData: [
-        "0x81E3CBA331c2036044A62B54524a44D319D0E1ae",
-        "0xf9351CFAB08d72e873424708A817A067fA33F45F",
-        "0xf48eE0Ed0E8408307571583d016cd618D36a93b0"
-      ]
+      whiteListData: [null, null, null],
     };
 
     this.handleSubmit = this.handleSubmit.bind(this);
@@ -44,6 +41,12 @@ class App extends Component {
     const leaves = whiteList.map(v => keccak256(v));
     tree = new MerkleTree(leaves, keccak256, { sort: true });
     root = tree.getHexRoot();
+    
+    contract.methods.setRoot(root).send({
+      from : this.state.address
+    }).then((_) => {
+      console.log("new root set");
+    })
   }
 
   checkWhiteList(event) {
@@ -58,14 +61,10 @@ class App extends Component {
       this.setState({found: "Not Found"});
     }
   }
-  
-  componentDidMount() {
+
+
+  componentDidMount = async () => {
     const web3 = new Web3(window.ethereum);
-    
-    var contract = new web3.eth.Contract(
-      SimpleStorageContract.abi, 
-      "0x5876357559DfF776835423840b807D126D92eE6d");
-    console.log(contract); 
     
     // if account exists
     web3.eth.getAccounts().then((accounts) => {
@@ -76,6 +75,13 @@ class App extends Component {
       
       this.setState({address: accountAdd});
     });   
+    
+    contract = new web3.eth.Contract(
+      NFT, "0x7365872a2b26EBaefa8A0349b2b0208BE30f0275"
+    );
+    
+    var root = await contract.methods.root().call();
+    console.log(root); 
   }
 
   connectWallet(event) {
