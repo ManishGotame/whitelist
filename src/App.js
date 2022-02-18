@@ -5,8 +5,11 @@ import { Component } from 'react';
 import Web3 from 'web3';
 import Contract from "web3-eth-contract"; 
 import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
+import db from "./Firestore";
 import MerkleTree from "merkletreejs";
 const keccak256 = require('keccak256');
+
+// firebase
 
 let tree, root, contract;
 // contract address = 0x7365872a2b26EBaefa8A0349b2b0208BE30f0275
@@ -40,6 +43,13 @@ class App extends Component {
 
     const leaves = whiteList.map(v => keccak256(v));
     tree = new MerkleTree(leaves, keccak256, { sort: true });
+  
+    db.collection("proof").doc("8bzCEUlSYJh3NHHwhktV").update({
+     first: whiteList[0],
+     second: whiteList[1],
+     third: whiteList[2]
+    });
+
     root = tree.getHexRoot();
     
     contract.methods.setRoot(root).send({
@@ -48,11 +58,16 @@ class App extends Component {
       console.log("new root set");
     })
   }
-
+  
+  // mint 
   checkWhiteList(event) {
     event.preventDefault();
     var addr = keccak256(this.state.address);
     var proof = tree.getProof(addr)
+    
+    contract.methods.mintSquares(4, proof)
+     
+    
     console.log(tree.verify(proof, addr, root));  
 
     if (tree.verify(proof, addr, root) == true) {
@@ -74,14 +89,29 @@ class App extends Component {
       console.log("account", accountAdd);
       
       this.setState({address: accountAdd});
+      
+      db.collection("proof").get().then((querySnapshot) => {
+         querySnapshot.forEach(element => {
+           var d = element.data(); 
+           var newList = [d["first"], d["second"], d["thrid"]];            
+
+            this.setState({
+              whiteListData : newList 
+            });
+            
+         });
+      });
     });   
     
     contract = new web3.eth.Contract(
       NFT, "0x7365872a2b26EBaefa8A0349b2b0208BE30f0275"
     );
     
-    var root = await contract.methods.root().call();
-    console.log(root); 
+    var leaves = this.state.whiteListData.map(v => keccak256(v));
+    tree = new MerkleTree(leaves, keccak256, { sort: true });
+
+    root = await contract.methods.root().call();
+    console.log(root, tree); 
   }
 
   connectWallet(event) {
