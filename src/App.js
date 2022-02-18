@@ -11,7 +11,7 @@ const keccak256 = require('keccak256');
 
 // firebase
 
-let tree, root, contract;
+let tree, root, contract, web3;
 // contract address = 0x7365872a2b26EBaefa8A0349b2b0208BE30f0275
 
 class App extends Component {
@@ -41,7 +41,7 @@ class App extends Component {
   
     console.log("white list addresses", whiteList);
 
-    const leaves = whiteList.map(v => keccak256(v));
+    var leaves = whiteList.map(v => keccak256(v));
     tree = new MerkleTree(leaves, keccak256, { sort: true });
   
     db.collection("proof").doc("8bzCEUlSYJh3NHHwhktV").update({
@@ -63,10 +63,31 @@ class App extends Component {
   checkWhiteList(event) {
     event.preventDefault();
     var addr = keccak256(this.state.address);
-    var proof = tree.getProof(addr)
     
-    contract.methods.mintSquares(4, proof)
-     
+    console.log("proof", proof, tree, addr, this.state.address);
+    
+    var proof = tree.getHexProof(addr)
+  
+    console.log("new proof", proof);
+
+    contract.methods
+      .mintSquares(1, proof)
+      .send({
+        from: this.state.address,
+        value: web3.utils.toWei((0.059).toString(), "ether"),
+      })
+      .once("error", (err) => {
+        console.log(err);
+        this.setState({
+          found: "Mint Failed"
+        });
+      })
+      .then((receipt) => {
+        console.log(receipt);
+        this.setState({
+          found: "Mint Success"
+        });
+      });
     
     console.log(tree.verify(proof, addr, root));  
 
@@ -79,7 +100,7 @@ class App extends Component {
 
 
   componentDidMount = async () => {
-    const web3 = new Web3(window.ethereum);
+    web3 = new Web3(window.ethereum);
     
     // if account exists
     web3.eth.getAccounts().then((accounts) => {
