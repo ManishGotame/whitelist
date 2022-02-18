@@ -51,6 +51,13 @@ class App extends Component {
     });
 
     root = tree.getHexRoot();
+    var addr = keccak256(this.state.address);
+    
+    //console.log("proof", proof, tree, addr, this.state.address);
+    
+    var proof = tree.getHexProof(addr);
+    
+    //console.log("proof", proof);
     
     contract.methods.setRoot(root).send({
       from : this.state.address
@@ -63,11 +70,11 @@ class App extends Component {
   checkWhiteList(event) {
     event.preventDefault();
     var addr = keccak256(this.state.address);
+        
+    //console.log("proof", proof, tree, addr, this.state.address);
     
-    console.log("proof", proof, tree, addr, this.state.address);
-    
-    var proof = tree.getHexProof(addr)
-  
+    var proof = tree.getHexProof(addr);
+    console.log(this.state.whiteListData); 
     console.log("new proof", proof);
 
     contract.methods
@@ -114,12 +121,14 @@ class App extends Component {
       db.collection("proof").get().then((querySnapshot) => {
          querySnapshot.forEach(element => {
            var d = element.data(); 
-           var newList = [d["first"], d["second"], d["thrid"]];            
+           var newList = [d["first"], d["second"], d["third"]];            
+           
+           this.setState({
+             whiteListData: newList
+           });
 
-            this.setState({
-              whiteListData : newList 
-            });
-            
+            var leaves = newList.map(v => keccak256(v));
+            tree = new MerkleTree(leaves, keccak256, { sort: true });
          });
       });
     });   
@@ -127,12 +136,8 @@ class App extends Component {
     contract = new web3.eth.Contract(
       NFT, "0x7365872a2b26EBaefa8A0349b2b0208BE30f0275"
     );
-    
-    var leaves = this.state.whiteListData.map(v => keccak256(v));
-    tree = new MerkleTree(leaves, keccak256, { sort: true });
-
+   
     root = await contract.methods.root().call();
-    console.log(root, tree); 
   }
 
   connectWallet(event) {
@@ -216,7 +221,7 @@ class App extends Component {
       <br/>
       
       <h2> Check if you wallet is on the whitelist : <h1> {this.state.found} </h1> </h2> 
-      {root == null? <button> Connect Wallet First </button> : <button onClick={this.checkWhiteList}> Check </button>}
+      {root == null? <button> Connect Wallet First </button> : <button onClick={this.checkWhiteList}> MINT </button>}
       </div>
     );
   }
